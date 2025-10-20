@@ -11,10 +11,15 @@
     "export": "next build"
   },
   "dependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "ethers": "^6.15.0",
+    "minimatch": "^10.0.3",
     "next": "15.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss-typography": "^3.1.0",
     "web3modal": "^1.9.12"
   },
   "devDependencies": {

@@ -1,5 +1,24 @@
 import { ethers } from 'ethers';
 
+// Type definitions for wallet providers
+interface WalletProvider {
+  request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  send?: (method: string, params?: unknown[]) => Promise<unknown>;
+  isPhantom?: boolean;
+  isMetaMask?: boolean;
+  isBraveWallet?: boolean;
+  isCoinbaseWallet?: boolean;
+  providers?: WalletProvider[];
+  constructor?: {
+    name?: string;
+  };
+}
+
+interface RpcError extends Error {
+  code?: number;
+  message: string;
+}
+
 // Polygon Amoy Testnet Configuration
 export const POLYGON_CONFIG = {
   chainId: 80002, // Polygon Amoy Testnet
@@ -60,12 +79,7 @@ export class PolygonProvider {
   }> {
     console.log('🔍 Detecting wallets...');
     
-    // Check for Phantom (Solana mode) first
-    if (typeof window.solana !== 'undefined' && window.solana.isPhantom) {
-      throw new Error('⚠️ Phantom detected in Solana mode!\n\nPlease switch Phantom to Ethereum mode to connect to Polygon.\n\n✅ How to switch:\n1. Open Phantom wallet\n2. Click the network selector\n3. Switch to "Ethereum"\n4. Try connecting again');
-    }
-    
-    // Check for Ethereum provider
+    // Check for Ethereum provider (Phantom, MetaMask, etc.)
     if (typeof window.ethereum === 'undefined') {
       throw new Error('❌ No Ethereum wallet found!\n\n✅ Please install Phantom:\n→ https://phantom.app\n\nOr install MetaMask as fallback:\n→ https://metamask.io');
     }
@@ -87,7 +101,7 @@ export class PolygonProvider {
       console.log('🔍 Multiple wallets detected, searching for Phantom...');
       
       // Look for Phantom with multiple detection methods
-      const phantomProvider = window.ethereum.providers.find((provider: any) => {
+      const phantomProvider = window.ethereum.providers.find((provider: WalletProvider) => {
         console.log('🔍 Checking provider:', {
           isPhantom: provider.isPhantom,
           isBraveWallet: provider.isBraveWallet,
@@ -95,20 +109,20 @@ export class PolygonProvider {
         });
         return provider.isPhantom || provider.isBraveWallet || 
                provider.constructor?.name?.toLowerCase().includes('phantom');
-      }) as any;
+      }) as WalletProvider | undefined;
       
       if (phantomProvider) {
-        ethereum = phantomProvider;
+        ethereum = phantomProvider as typeof window.ethereum;
         selectedWallet = 'phantom';
         console.log('✅ Phantom detected and selected from multiple providers');
       } else {
         // Only fallback to MetaMask if Phantom is truly not available
         const metamaskProvider = window.ethereum.providers.find(
-          (provider: any) => provider.isMetaMask
-        ) as any;
+          (provider: WalletProvider) => provider.isMetaMask
+        ) as WalletProvider | undefined;
         
         if (metamaskProvider) {
-          ethereum = metamaskProvider;
+          ethereum = metamaskProvider as typeof window.ethereum;
           selectedWallet = 'metamask';
           console.log('⚠️ MetaMask detected as fallback (Phantom not found)');
         } else {
@@ -162,9 +176,10 @@ export class PolygonProvider {
           params: [{ chainId: POLYGON_NETWORK.chainId }],
         });
         console.log('✅ Switched to Polygon Amoy');
-      } catch (switchError: any) {
+      } catch (switchError) {
+        const error = switchError as RpcError;
         // If switch fails, try to add the network
-        if (switchError.code === 4902 || switchError.code === -32603) {
+        if (error.code === 4902 || error.code === -32603) {
           console.log('➕ Adding Polygon Amoy network to Phantom...');
           try {
             await ethereum.request({
@@ -172,10 +187,11 @@ export class PolygonProvider {
               params: [POLYGON_NETWORK],
             });
             console.log('✅ Polygon Amoy network added');
-          } catch (addError: any) {
-            throw new Error(`Failed to add Polygon Amoy network: ${addError.message}`);
+          } catch (addError) {
+            const addErrorObj = addError as RpcError;
+            throw new Error(`Failed to add Polygon Amoy network: ${addErrorObj.message}`);
           }
-        } else if (switchError.code === 4001) {
+        } else if (error.code === 4001) {
           throw new Error('Connection rejected. Please approve the network switch in Phantom.');
         } else {
           throw switchError;
@@ -194,13 +210,14 @@ export class PolygonProvider {
         provider: this.provider,
         signer: this.signer,
       };
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as RpcError;
       console.error('❌ Polygon connection failed:', error);
       
       // Provide user-friendly error messages
-      if (error.message.includes('User rejected')) {
+      if (err.message.includes('User rejected')) {
         throw new Error('Connection rejected. Please approve the connection in Phantom.');
-      } else if (error.message.includes('Already processing')) {
+      } else if (err.message.includes('Already processing')) {
         throw new Error('Phantom is busy. Please check Phantom and try again.');
       }
       
@@ -300,14 +317,14 @@ export const forcePhantomUsage = () => {
   // Clear any cached wallet connections
   if (typeof window !== 'undefined') {
     // Force detection of Phantom
-    const phantomProvider = window.ethereum?.providers?.find((provider: any) => 
+    const phantomProvider = window.ethereum?.providers?.find((provider: WalletProvider) => 
       provider.isPhantom || provider.isBraveWallet
     );
     
     if (phantomProvider) {
       // Temporarily override window.ethereum to force Phantom
       const originalEthereum = window.ethereum;
-      window.ethereum = phantomProvider as any;
+      window.ethereum = phantomProvider as typeof window.ethereum;
       
       // Restore after a short delay
       setTimeout(() => {

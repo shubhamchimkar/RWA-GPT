@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { 
   polygonProvider, 
   POLYGON_CONFIG, 
@@ -537,7 +539,11 @@ export default function Home() {
                               : 'bg-white border border-gray-200 text-gray-900 shadow-sm'
                           }`}
                         >
-                          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{message.text}</pre>
+                          <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {message.text}
+                            </ReactMarkdown>
+                          </div>
                           {message.isTransaction && message.transactionData && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
                               <button

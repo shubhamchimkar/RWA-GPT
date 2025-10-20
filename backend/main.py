@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import json
 import os
 from dotenv import load_dotenv
-from .agent import query_rwa_database, get_1inch_swap_data, search_web
+from agent import query_rwa_database, get_1inch_swap_data, search_web, tokens_for_chain
 import re
 import requests
 from datetime import datetime
@@ -669,7 +669,7 @@ async def ask_agent(request: MessageRequest):
                 chain_id = 80002  # Force Polygon Amoy Testnet for testing
                 
                 # Get correct token addresses for the testnet
-                from .agent import tokens_for_chain
+                from agent import tokens_for_chain
                 src_token, dst_token, src_decimals = tokens_for_chain(chain_id)
                 
                 # Get swap data from 1inch
