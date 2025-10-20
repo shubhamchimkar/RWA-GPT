@@ -28,6 +28,16 @@ except ImportError:
 # Load environment variables
 load_dotenv()
 
+# Configure allowed origins for CORS
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+extra_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+EXTRA_ALLOWED_ORIGINS = [origin.strip() for origin in extra_origins_env.split(",") if origin.strip()]
+ALLOWED_ORIGINS = list(dict.fromkeys(DEFAULT_ALLOWED_ORIGINS + EXTRA_ALLOWED_ORIGINS))
+
 # In-memory transaction storage (in production, use a database)
 TRANSACTION_HISTORY = []
 
@@ -387,11 +397,7 @@ app = FastAPI(title="RWA-GPT API", version="1.0.0")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    # Allow common local dev origins
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
